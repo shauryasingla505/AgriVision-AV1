@@ -57,7 +57,7 @@ st.markdown("""
 
     h1, h2, h3, h4 { color: #64ffda !important; font-weight: 800; text-shadow: 2px 2px #020c1b; }
     p, span, label, li, .stMarkdown { color: #ccd6f6 !important; font-weight: 600 !important; }
-    [data-testid="stMetricValue"] { color: #64ffda !important; font-size: 2.5rem !important; }
+    [data-testid="stMetricValue"] { color: #64ffda !important; font-size: 2.2rem !important; }
     [data-testid="stMetricDelta"] svg { fill: #64ffda !important; }
     </style>
 
@@ -136,26 +136,23 @@ if db is not None:
     avg_temp_val = pd.to_numeric(w_row[found_m or ['June']]).mean()
 
     c1, c2, c3, c4, c5 = st.columns(5)
-    with c1: n_in = st.number_input(tr("Nitrogen"), value=float(nut_row['Nitrogen']))
-    with c2: p_in = st.number_input(tr("Phosphorus"), value=float(nut_row['Phosphorus']))
-    with c3: k_in = st.number_input(tr("Potassium"), value=float(nut_row['Potassium']))
-    with c4: t_in = st.number_input(tr("Avg Temp"), value=float(avg_temp_val))
-    with c5: r_in = st.number_input(tr("Rainfall"), value=float(w_row.get('Average annual rainfall (mm)', 1000)))
+    with c1: n_in = st.number_input(f"{tr('Nitrogen')} (kg/ha)", value=float(nut_row['Nitrogen']))
+    with c2: p_in = st.number_input(f"{tr('Phosphorus')} (kg/ha)", value=float(nut_row['Phosphorus']))
+    with c3: k_in = st.number_input(f"{tr('Potassium')} (kg/ha)", value=float(nut_row['Potassium']))
+    with c4: t_in = st.number_input(f"{tr('Avg Temp')} (°C)", value=float(avg_temp_val))
+    with c5: r_in = st.number_input(f"{tr('Rainfall')} (mm)", value=float(w_row.get('Average annual rainfall (mm)', 1000)))
     st.markdown('</div>', unsafe_allow_html=True)
 
     if st.button(f"🚀 {tr('Predict & Show Advice')}"):
         st.session_state.clicked = True
         
-        # Scoring with NPK Impact
+        # Scoring Logic
         score = 100
         if t_in < req['t_min'] or t_in > req['t_max']: score -= 20
         if r_in < req['r_min']: score -= 20
-        
-        # Calculate NPK met percentages for display and scoring
         n_p = min(1.0, n_in/req['n']) if req['n'] > 0 else 1.0
         p_p = min(1.0, p_in/req['p']) if req['p'] > 0 else 1.0
         k_p = min(1.0, k_in/req['k']) if req['k'] > 0 else 1.0
-        
         score -= ((1-n_p)*30 + (1-p_p)*15 + (1-k_p)*15)
         st.session_state.score = max(5, int(score)) 
         
@@ -174,7 +171,7 @@ if db is not None:
             st.session_state.msp_available = False
             st.session_state.earnings = 0
 
-        audio_text = f"Suitability is {st.session_state.score} percent. Yield is {yield_val:.2f} tons."
+        audio_text = f"Suitability is {st.session_state.score} percent. Yield is {yield_val:.2f} tons per hectare."
         try:
             tts = gTTS(text=live_tr(audio_text, t_code), lang=t_code)
             tts.save("v.mp3")
@@ -187,7 +184,7 @@ if db is not None:
         r_c1.metric(tr("Suitability"), f"{st.session_state.score}%")
         r_c2.metric(tr("Yield Estimate"), f"{st.session_state.yield_val:.2f} T/Ha")
         if st.session_state.get('msp_available'):
-            r_c3.metric(tr("Potential Earnings"), f"₹{int(st.session_state.earnings):,}")
+            r_c3.metric(f"{tr('Potential Earnings')} (per Hectare)", f"₹{int(st.session_state.earnings):,}")
         else: r_c3.metric(tr("Potential Earnings"), "N/A")
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -199,15 +196,14 @@ if db is not None:
 
         with tab2:
             st.markdown(f"### 🧪 {tr('Detailed NPK Gap Analysis')}")
-            # Visual comparison of current soil nutrients vs target
             s_c1, s_c2, s_c3 = st.columns(3)
-            s_c1.metric(f"{tr('Nitrogen')} (N)", f"{int(n_in)}", delta=f"{int(n_in - req['n'])} gap", delta_color="normal")
-            s_c2.metric(f"{tr('Phosphorus')} (P)", f"{int(p_in)}", delta=f"{int(p_in - req['p'])} gap", delta_color="normal")
-            s_c3.metric(f"{tr('Potassium')} (K)", f"{int(k_in)}", delta=f"{int(k_in - req['k'])} gap", delta_color="normal")
+            s_c1.metric(f"{tr('Nitrogen')} (N)", f"{int(n_in)} kg/ha", delta=f"{int(n_in - req['n'])} gap", delta_color="normal")
+            s_c2.metric(f"{tr('Phosphorus')} (P)", f"{int(p_in)} kg/ha", delta=f"{int(p_in - req['p'])} gap", delta_color="normal")
+            s_c3.metric(f"{tr('Potassium')} (K)", f"{int(k_in)} kg/ha", delta=f"{int(k_in - req['k'])} gap", delta_color="normal")
             
             st.markdown("---")
             st.write(f"📊 **{tr('Requirement for')} {sel_crop}:**")
-            st.write(f"Target N: `{req['n']}` | Target P: `{req['p']}` | Target K: `{req['k']}`")
+            st.write(f"Target N: `{req['n']} kg/ha` | Target P: `{req['p']} kg/ha` | Target K: `{req['k']} kg/ha`")
             st.progress(st.session_state.score / 100)
             st.caption(tr("Overall Soil Suitability Progress"))
 
